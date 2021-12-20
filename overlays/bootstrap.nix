@@ -186,6 +186,11 @@ in {
                 ++ fromUntil "8.10"   "9.2.2"  ./patches/ghc/MR6654-nonmoving-maxmem.patch  # https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6654
                 ++ fromUntil "8.10"   "8.10.8" ./patches/ghc/MR6617-nonmoving-mvar.patch    # https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6617
                 ++ fromUntil "8.10"   "8.10.8" ./patches/ghc/MR6595-nonmoving-mutvar.patch  # https://gitlab.haskell.org/ghc/ghc/-/merge_requests/6595
+
+                # Hasura related patches
+                ++ final.lib.optional (version == "8.10.7") ./patches/ghc/ghc-8.10.7-gradually-return-retained-memory.patch
+                ++ final.lib.optional (version == "8.10.7") ./patches/ghc/ghc-8.10.7-allocatePinned-always-take-new-block.patch
+                ++ final.lib.optional (version == "8.10.7") ./patches/ghc/ghc-8.10.7-pinned-from-nursery-flag.patch
                 ;
         in ({
             ghc844 = final.callPackage ../compiler/ghc {

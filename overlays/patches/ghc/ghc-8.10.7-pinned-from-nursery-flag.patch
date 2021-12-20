@@ -1,0 +1,74 @@
+From 962b00e7fbf75913ee1ceb8231ad533b7ee4978f Mon Sep 17 00:00:00 2001
+From: Matthew Pickering <matthewtpickering@gmail.com>
+Date: Fri, 5 Mar 2021 09:21:18 +0000
+Subject: [PATCH] Add --pinned-from-nursery RTS flag
+
+This flag controls whether allocatePinned takes a block from the nursery
+or not.
+---
+ includes/rts/Flags.h | 1 +
+ rts/RtsFlags.c       | 8 ++++++++
+ rts/sm/Storage.c     | 2 +-
+ 3 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/includes/rts/Flags.h b/includes/rts/Flags.h
+index f138b574ee..8262ec0da4 100644
+--- a/includes/rts/Flags.h
++++ b/includes/rts/Flags.h
+@@ -225,6 +225,7 @@ typedef struct _MISC_FLAGS {
+     bool linkerAlwaysPic;        /* Assume the object code is always PIC */
+     StgWord linkerMemBase;       /* address to ask the OS for memory
+                                   * for the linker, NULL ==> off */
++    bool pinnedFromNursery; /* Whether allocatePinned will steal blocks from the nursery */
+ } MISC_FLAGS;
+ 
+ /* See Note [Synchronization of flags and base APIs] */
+diff --git a/rts/RtsFlags.c b/rts/RtsFlags.c
+index 3396b7f0aa..1c12226e01 100644
+--- a/rts/RtsFlags.c
++++ b/rts/RtsFlags.c
+@@ -249,6 +249,7 @@ void initRtsFlagsDefaults(void)
+     RtsFlags.MiscFlags.internalCounters        = false;
+     RtsFlags.MiscFlags.linkerAlwaysPic         = DEFAULT_LINKER_ALWAYS_PIC;
+     RtsFlags.MiscFlags.linkerMemBase           = 0;
++    RtsFlags.MiscFlags.pinnedFromNursery       = false;
+ 
+ #if defined(THREADED_RTS)
+     RtsFlags.ParFlags.nCapabilities     = 1;
+@@ -292,6 +293,8 @@ usage_text[] = {
+ "            manage the oldest generation.",
+ "  --copying-gc",
+ "            Selects the copying garbage collector to manage all generations.",
++"  --pinned-from-nursery",
++"            Try to take a block from the nursery when a new pinned block is needed",
+ "",
+ "  -K<size>  Sets the maximum stack size (default: 80% of the heap)",
+ "            Egs: -K32k -K512k -K8M",
+@@ -956,6 +959,11 @@ error = true;
+                       OPTION_SAFE;
+                       RtsFlags.GcFlags.useNonmoving = true;
+                   }
++                  else if (strequal("pinned-from-nursery",
++                               &rts_argv[arg][2])) {
++                      OPTION_SAFE;
++                      RtsFlags.MiscFlags.pinnedFromNursery = true;
++                  }
+ #if defined(THREADED_RTS)
+                   else if (!strncmp("numa", &rts_argv[arg][2], 4)) {
+                       if (!osBuiltWithNumaSupport()) {
+diff --git a/rts/sm/Storage.c b/rts/sm/Storage.c
+index 38df8ffc4c..a9eacb4523 100644
+--- a/rts/sm/Storage.c
++++ b/rts/sm/Storage.c
+@@ -1125,7 +1125,7 @@ allocatePinned (Capability *cap, W_ n)
+         // So first, we try taking the next block from the nursery, in
+         // the same way as allocate().
+         bd = cap->r.rCurrentNursery->link;
+-        if (bd == NULL || true) {
++        if (bd == NULL || !RtsFlags.MiscFlags.pinnedFromNursery ) {
+             // The nursery is empty: allocate a fresh block (we can't fail
+             // here).
+             ACQUIRE_SM_LOCK;
+-- 
+GitLab
+

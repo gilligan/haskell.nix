@@ -1,0 +1,34 @@
+From 33dfb61f528905321bd863e16e44b1b29a30edac Mon Sep 17 00:00:00 2001
+From: Matthew Pickering <matthewtpickering@gmail.com>
+Date: Wed, 3 Mar 2021 10:19:26 +0000
+Subject: [PATCH] rts: Make allocatePinned always take a new block
+
+This change surprisingly fixes quite bad fragmentation issues
+
+When a new block was stolen from the nursery it meant that on the next
+GC that the nursery had to be resized and the stolen block replaced.
+This led to a few (1 or 2) random blocks from the free list being added to
+the nursery, from which they would never escape. Over time, the rest of
+the blocks in these megablocks would get collected but the nursery would hold onto 1
+block from many different megablocks. This led to the situation where
+there were many nearly empty megablocks in the free list.
+---
+ rts/sm/Storage.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/rts/sm/Storage.c b/rts/sm/Storage.c
+index 0a87e8fe5b..38df8ffc4c 100644
+--- a/rts/sm/Storage.c
++++ b/rts/sm/Storage.c
+@@ -1125,7 +1125,7 @@ allocatePinned (Capability *cap, W_ n)
+         // So first, we try taking the next block from the nursery, in
+         // the same way as allocate().
+         bd = cap->r.rCurrentNursery->link;
+-        if (bd == NULL) {
++        if (bd == NULL || true) {
+             // The nursery is empty: allocate a fresh block (we can't fail
+             // here).
+             ACQUIRE_SM_LOCK;
+-- 
+GitLab
+
